@@ -3,17 +3,8 @@ import { Link } from 'react-router-dom'
 import { 
   Trophy, 
   CheckCircle2, 
-  Clock, 
   Users, 
-  ArrowRight, 
-  Layers, 
-  Terminal, 
-  ShieldCheck, 
   ChevronRight,
-  Flame,
-  Activity,
-  Cpu,
-  FileCode,
   Bell
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -77,10 +68,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Large Countdown Telemetry */}
-          <div className="bg-[#090b10] border border-zinc-800 rounded-md p-4 flex items-center gap-4 shrink-0 font-mono">
-            <div className="p-2.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400">
-              <Clock className="w-5 h-5" />
-            </div>
+          <div className="bg-[#090b10] border border-zinc-800 rounded-md p-4 shrink-0 font-mono">
             <div>
               <span className="text-[10px] text-zinc-500 block uppercase tracking-wider">
                 TIME REMAINING
@@ -94,7 +82,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Participant Stats Row (Section 10) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
         {/* Score Card */}
         <Card className="p-4 bg-[#10121a]">
@@ -108,21 +96,6 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
             <span>Points in Play: {challenges.reduce((a, c) => a + c.points, 0)}</span>
-          </div>
-        </Card>
-
-        {/* Rank Card */}
-        <Card className="p-4 bg-[#10121a]">
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
-            <span className="text-xs font-mono">CURRENT RANK</span>
-            <Flame className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-amber-300">#4</span>
-            <span className="text-xs text-zinc-500 font-mono">/ 32 Teams</span>
-          </div>
-          <div className="mt-2 text-[11px] text-emerald-400 flex items-center gap-1">
-            <span>▲ 1 rank in last hour</span>
           </div>
         </Card>
 
@@ -141,22 +114,6 @@ export const DashboardPage: React.FC = () => {
               className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
               style={{ width: `${progressPercent}%` }} 
             />
-          </div>
-        </Card>
-
-        {/* Team Roster */}
-        <Card className="p-4 bg-[#10121a]">
-          <div className="flex items-center justify-between text-zinc-400 mb-2">
-            <span className="text-xs font-mono">ACTIVE SQUAD</span>
-            <Users className="w-4 h-4 text-zinc-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-zinc-100">4</span>
-            <span className="text-xs text-zinc-500 font-mono">members</span>
-          </div>
-          <div className="mt-2 text-[11px] text-zinc-500 flex items-center justify-between">
-            <span className="text-emerald-400">● All 4 online</span>
-            <Link to="/team" className="text-blue-400 hover:underline">Manage</Link>
           </div>
         </Card>
 
@@ -281,9 +238,11 @@ export const DashboardPage: React.FC = () => {
                 </div>
               ))}
 
-              <Link to="/team" className="block text-center pt-2">
-                <span className="text-xs text-blue-400 hover:underline">View Complete Team Activity →</span>
-              </Link>
+              {user?.role === 'organizer' && (
+                <Link to="/team" className="block text-center pt-2">
+                  <span className="text-xs text-blue-400 hover:underline">View Complete Team Activity →</span>
+                </Link>
+              )}
             </div>
           </Card>
 

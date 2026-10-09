@@ -1,19 +1,22 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Shield, ExternalLink } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 
 export const Footer: React.FC = () => {
+  const { user } = useAuth()
   return (
     <footer className="border-t border-zinc-800/80 bg-[#07080c] py-10 px-4 sm:px-6 lg:px-8 text-xs text-zinc-500">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         
         {/* Brand identity */}
         <div className="space-y-2 max-w-sm">
-          <div className="flex items-center gap-2 font-mono text-zinc-300">
-            <Shield className="w-4 h-4 text-blue-500" />
-            <span className="font-semibold text-zinc-200">ACM × NEAR.AI CTF</span>
+          <div className="flex items-center gap-2.5 font-mono text-zinc-300">
+            <img src="/acm-logo.png" alt="ACM Logo" className="h-6 w-auto object-contain" />
+            <span className="text-zinc-600 text-xs">×</span>
+            <span className="font-semibold text-cyan-400">NEAR.AI</span>
             <span className="text-zinc-600">|</span>
-            <span className="text-[11px] text-zinc-400">6-Hour Competition</span>
+            <span className="text-[11px] text-zinc-400">6-Hour CTF</span>
           </div>
           <p className="text-zinc-500 text-[11px] leading-relaxed">
             Organized by the ACM Student Chapter in collaboration with NEAR.AI. Built for technical security problem-solving, binary analysis, cryptography, and artificial intelligence safety.
@@ -28,9 +31,11 @@ export const Footer: React.FC = () => {
           <Link to="/challenges" className="hover:text-zinc-300 transition-colors">
             Challenges
           </Link>
-          <Link to="/leaderboard" className="hover:text-zinc-300 transition-colors">
-            Scoreboard
-          </Link>
+          {user?.role === 'organizer' && (
+            <Link to="/leaderboard" className="hover:text-zinc-300 transition-colors">
+              Scoreboard
+            </Link>
+          )}
           <a 
             href="#faq" 
             className="hover:text-zinc-300 transition-colors"

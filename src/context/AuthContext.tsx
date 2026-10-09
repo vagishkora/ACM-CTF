@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { User, UserRole } from '../types'
-import { authService, LoginCredentials, RegisterPayload } from '../services/authService'
+import { authService, LoginCredentials, RegisterPayload, ProfileDetailsPayload } from '../services/authService'
+import { realtimeSync } from '../services/realtimeSync'
 
 interface AuthContextType {
   user: User | null
@@ -10,6 +11,8 @@ interface AuthContextType {
   register: (payload: RegisterPayload) => Promise<User>
   logout: () => Promise<void>
   switchRole: (role: UserRole) => Promise<void>
+  completeProfile: (details: ProfileDetailsPayload) => Promise<User>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -18,12 +21,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    authService.getCurrentUser()
-      .then(u => setUser(u))
-      .catch(() => setUser(null))
-      .finally(() => setIsLoading(false))
+  const refreshUser = useCallback(async () => {
+    try {
+      const u = await authService.getCurrentUser()
+      setUser(u)
+    } catch {
+      setUser(null)
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
+
+  useEffect(() => {
+    refreshUser()
+
+    // Listen for realtime role changes or profile updates affecting this user
+    const unsubscribe = realtimeSync.subscribe((msg) => {
+      if (msg.type === 'ROLE_CHANGED' || msg.type === 'PROFILE_UPDATED') {
+        refreshUser()
+      }
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [refreshUser])
 
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true)
@@ -62,6 +84,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(updated)
   }
 
+  const completeProfile = async (details: ProfileDetailsPayload) => {
+    const updated = await authService.completeProfile(details)
+    setUser(updated)
+    return updated
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -71,7 +99,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
-        switchRole
+        switchRole,
+        completeProfile,
+        refreshUser
       }}
     >
       {children}

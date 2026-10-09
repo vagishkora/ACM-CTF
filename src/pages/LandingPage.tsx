@@ -2,20 +2,8 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { 
   ArrowRight, 
-  Terminal, 
   Clock, 
-  ShieldCheck, 
-  Cpu, 
-  FileCode, 
-  Layers, 
-  CheckCircle2, 
-  ExternalLink,
-  ChevronRight,
-  Database,
-  Lock,
-  Binary,
-  Radio,
-  Search
+  ChevronRight 
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useEvent } from '../context/EventContext'
@@ -31,43 +19,36 @@ export const LandingPage: React.FC = () => {
     {
       name: 'Web Exploitation',
       code: 'WEB',
-      icon: <FileCode className="w-4 h-4 text-cyan-400" />,
       desc: 'HTTP proxies, header confusion, modern token verification vulnerabilities, and API parsing traps.'
     },
     {
       name: 'Cryptography',
       code: 'CRYPTO',
-      icon: <Lock className="w-4 h-4 text-violet-400" />,
       desc: 'LFSR state reconstruction, stream cipher flaws, and neural weight parity bit cryptanalysis.'
     },
     {
       name: 'Digital Forensics',
       code: 'FORENSICS',
-      icon: <Database className="w-4 h-4 text-teal-400" />,
       desc: 'Filesystem journal carving, unallocated inode reconstruction, and triage memory dump extraction.'
     },
     {
       name: 'Reverse Engineering',
       code: 'REV',
-      icon: <Binary className="w-4 h-4 text-indigo-400" />,
       desc: 'Custom VM bytecode interpreters, ELF decompilation, and telemetry protocol checksum reverse engineering.'
     },
     {
       name: 'Binary Exploitation (Pwn)',
       code: 'PWN',
-      icon: <Cpu className="w-4 h-4 text-rose-400" />,
       desc: 'Modern stack frame pivots, ROP chains, and heap chunk layout manipulation under memory constraints.'
     },
     {
       name: 'Open Source Intelligence (OSINT)',
       code: 'OSINT',
-      icon: <Search className="w-4 h-4 text-amber-400" />,
       desc: 'Satellite Doppler shift telemetry, ground station locator analysis, and public registry correlation.'
     },
     {
       name: 'Autonomous Systems & AI Safety',
       code: 'NEAR.AI',
-      icon: <Radio className="w-4 h-4 text-cyan-300" />,
       desc: 'Model guardrail bypassing, prompt boundary analysis, and WebAssembly smart contract invariant evaluation.'
     }
   ]
@@ -110,6 +91,13 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Display Headline */}
+            <div className="mb-6">
+              <img 
+                src="/acm-logo.png" 
+                alt="ACM Chapter Logo" 
+                className="h-14 sm:h-16 w-auto object-contain drop-shadow-[0_0_20px_rgba(59,130,246,0.3)]" 
+              />
+            </div>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white mb-6">
               <span className="font-mono text-blue-500">ACM</span>{' '}
               <span className="text-zinc-500 font-light">×</span>{' '}
@@ -208,10 +196,12 @@ export const LandingPage: React.FC = () => {
 
             <div className="md:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Card className="p-5 bg-[#0f111a] border-zinc-800">
-                <div className="w-8 h-8 rounded bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-3">
-                  <ShieldCheck className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 font-semibold">
+                    75% WEIGHT
+                  </span>
                 </div>
-                <h3 className="text-sm font-semibold text-zinc-100 font-mono">ACM Track (~75%)</h3>
+                <h3 className="text-sm font-semibold text-zinc-100 font-mono">ACM Track</h3>
                 <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
                   Engineered by the ACM technical committee. Features real-world attack vectors, kernel debugging, filesystem reconstruction, and protocol reversing.
                 </p>
@@ -221,10 +211,12 @@ export const LandingPage: React.FC = () => {
               </Card>
 
               <Card className="p-5 bg-[#0f111a] border-zinc-800">
-                <div className="w-8 h-8 rounded bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-3">
-                  <Cpu className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-semibold">
+                    25% WEIGHT
+                  </span>
                 </div>
-                <h3 className="text-sm font-semibold text-zinc-100 font-mono">NEAR.AI Track (~25%)</h3>
+                <h3 className="text-sm font-semibold text-zinc-100 font-mono">NEAR.AI Track</h3>
                 <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
                   Contributed by NEAR.AI researchers. Focuses on autonomous agent prompt guardrail robustness, WASM verifier invariants, and model weight steganography.
                 </p>
@@ -256,15 +248,12 @@ export const LandingPage: React.FC = () => {
             {categories.map((cat) => (
               <Card key={cat.code} className="p-4 bg-[#10121a] border-zinc-800/80 hover:border-zinc-700 transition-colors flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-2 rounded bg-zinc-900 border border-zinc-800">
-                      {cat.icon}
-                    </div>
-                    <span className="font-mono text-[10px] text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-[11px] font-semibold text-cyan-400 px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800">
                       {cat.code}
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-zinc-200">{cat.name}</h3>
+                  <h3 className="text-sm font-semibold text-zinc-200 mt-2">{cat.name}</h3>
                   <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
                     {cat.desc}
                   </p>

@@ -10,6 +10,7 @@ import { Navbar } from './components/layout/Navbar'
 import { EventBanner } from './components/layout/EventBanner'
 import { DemoToolbar } from './components/layout/DemoToolbar'
 import { Footer } from './components/layout/Footer'
+import { ProfileCompletionModal } from './components/auth/ProfileCompletionModal'
 
 // Pages
 import { LandingPage } from './pages/LandingPage'
@@ -63,10 +64,10 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 export function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <EventProvider>
-          <CTFProvider>
-            <ToastProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <EventProvider>
+            <CTFProvider>
               <div className="min-h-screen flex flex-col bg-[#090a0f] text-zinc-100 font-sans selection:bg-blue-600/30 selection:text-blue-200">
                 {/* Demo & Evaluation State Simulator Toolbar */}
                 <DemoToolbar />
@@ -102,13 +103,16 @@ export function App() {
                   </Routes>
                 </main>
 
+                {/* Profile Completion Modal for First-time Logins */}
+                <ProfileCompletionModal />
+
                 {/* Footer */}
                 <Footer />
               </div>
-            </ToastProvider>
-          </CTFProvider>
-        </EventProvider>
-      </AuthProvider>
+            </CTFProvider>
+          </EventProvider>
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   )
 }

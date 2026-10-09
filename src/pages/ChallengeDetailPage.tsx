@@ -18,11 +18,21 @@ import {
   Key,
   ShieldCheck,
   FileCode,
-  Info
+  Info,
+  Edit,
+  Trash2,
+  ShieldAlert,
+  Eye,
+  EyeOff,
+  Globe,
+  ExternalLink,
+  Paperclip,
+  Plus
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import { useCTF } from '../context/CTFContext'
 import { useEvent } from '../context/EventContext'
-import { Challenge, Hint } from '../types'
+import { Challenge, Hint, ChallengeCategory, ChallengeDifficulty, ChallengeSource, FileAttachment } from '../types'
 import { challengeService } from '../services/challengeService'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -37,13 +47,34 @@ import { getDifficultyColor, getCategoryBadge } from '../lib/utils'
 export const ChallengeDetailPage: React.FC = () => {
   const { id: paramId } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { challenges, submitFlag, unlockHint, startInstance, stopInstance } = useCTF()
+  const { user } = useAuth()
+  const { challenges, submitFlag, unlockHint, startInstance, stopInstance, refreshChallenges } = useCTF()
   const { status: eventStatus } = useEvent()
   const { toast } = useToast()
+
+  const isOrganizer = user?.role === 'organizer'
 
   const [challenge, setChallenge] = useState<Challenge | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Organizer Edit & Superpower State
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [showSecretFlag, setShowSecretFlag] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editCategory, setEditCategory] = useState<ChallengeCategory>('Web')
+  const [editDifficulty, setEditDifficulty] = useState<ChallengeDifficulty>('Easy')
+  const [editPoints, setEditPoints] = useState(100)
+  const [editSource, setEditSource] = useState<ChallengeSource>('ACM')
+  const [editAuthor, setEditAuthor] = useState('')
+  const [editFlag, setEditFlag] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editFiles, setEditFiles] = useState<FileAttachment[]>([])
+  const [editHasTarget, setEditHasTarget] = useState(false)
+  const [editTargetHost, setEditTargetHost] = useState('')
+  const [editTargetPort, setEditTargetPort] = useState(8080)
+  const [editTargetProtocol, setEditTargetProtocol] = useState<'http' | 'tcp' | 'ssh'>('http')
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   // Flag Submission State
   const [flagInput, setFlagInput] = useState('')
@@ -85,6 +116,92 @@ export const ChallengeDetailPage: React.FC = () => {
   const currentIndex = challenges.findIndex(c => c.id === challenge?.id || c.slug === challenge?.slug)
   const prevChallenge = currentIndex > 0 ? challenges[currentIndex - 1] : null
   const nextChallenge = currentIndex >= 0 && currentIndex < challenges.length - 1 ? challenges[currentIndex + 1] : null
+
+  // Organizer Superpower Actions
+  const handleOpenEdit = () => {
+    if (!challenge) return
+    setEditTitle(challenge.title)
+    setEditCategory(challenge.category)
+    setEditDifficulty(challenge.difficulty)
+    setEditPoints(challenge.points)
+    setEditSource(challenge.source)
+    setEditAuthor(challenge.author)
+    setEditFlag(challengeService.getFlag(challenge.id))
+    setEditDescription(challenge.description)
+    setEditFiles(challenge.files ? [...challenge.files] : [])
+    setEditHasTarget(!!(challenge.target && challenge.target.host))
+    setEditTargetHost(challenge.target?.host || '')
+    setEditTargetPort(challenge.target?.port || 8080)
+    setEditTargetProtocol(challenge.target?.protocol || 'http')
+    setEditModalOpen(true)
+  }
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!challenge || !editTitle.trim()) return
+
+    setIsSavingEdit(true)
+    try {
+      const targetObj = editHasTarget && editTargetHost.trim() ? {
+        id: challenge.target?.id || `target-${challenge.id}`,
+        host: editTargetHost.trim(),
+        port: Number(editTargetPort) || 8080,
+        protocol: editTargetProtocol,
+        status: challenge.target?.status || ('stopped' as const)
+      } : undefined
+
+      const updated = await challengeService.updateChallenge(challenge.id, {
+        title: editTitle,
+        category: editCategory,
+        difficulty: editDifficulty,
+        points: Number(editPoints),
+        source: editSource,
+        author: editAuthor,
+        description: editDescription,
+        files: editFiles,
+        target: targetObj
+      }, editFlag)
+      setChallenge(updated)
+      await refreshChallenges()
+      toast({
+        type: 'success',
+        title: 'Challenge Updated',
+        description: `Saved changes to "${editTitle}".`
+      })
+      setEditModalOpen(false)
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  const handleDeleteChallenge = async () => {
+    if (!challenge) return
+    if (!window.confirm(`Are you sure you want to permanently delete "${challenge.title}"?`)) return
+    await challengeService.deleteChallenge(challenge.id)
+    await refreshChallenges()
+    toast({
+      type: 'info',
+      title: 'Challenge Deleted',
+      description: `Removed "${challenge.title}".`
+    })
+    navigate('/challenges')
+  }
+
+  const handleToggleSolvedForAdmin = async () => {
+    if (!challenge) return
+    const newSolved = !challenge.isSolved
+    const updated = await challengeService.updateChallenge(challenge.id, {
+      isSolved: newSolved,
+      solvesCount: newSolved ? challenge.solvesCount + 1 : Math.max(0, challenge.solvesCount - 1)
+    })
+    setChallenge(updated)
+    await refreshChallenges()
+    toast({
+      type: 'info',
+      title: newSolved ? 'Marked Solved' : 'Marked Unsolved',
+      description: `Challenge solve status updated for testing.`
+    })
+  }
 
   const handleFlagSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -216,6 +333,33 @@ export const ChallengeDetailPage: React.FC = () => {
     )
   }
 
+  if (challenge.isLocked && user?.role !== 'organizer') {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-20 text-center font-mono">
+        <div className="p-8 rounded-xl bg-[#10121a] border border-amber-900/50 space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-full bg-amber-950/60 border border-amber-800/50 text-amber-300 flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-zinc-100">CHALLENGE IS CURRENTLY LOCKED</h2>
+          <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+            "{challenge.title}" is scheduled for release in <strong className="text-amber-300">Wave {challenge.releaseWave || 2}</strong>. It will automatically unlock when that wave of the competition begins.
+          </p>
+          <div className="pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/challenges')}
+              leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+              className="font-mono text-xs"
+            >
+              Back to Available Challenges
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const diff = getDifficultyColor(challenge.difficulty)
   const cat = getCategoryBadge(challenge.category)
 
@@ -256,6 +400,78 @@ export const ChallengeDetailPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Organizer Superpowers Control Banner */}
+      {isOrganizer && (
+        <div className="p-4 rounded-lg bg-gradient-to-r from-purple-950/40 via-[#141221] to-[#0d0f17] border border-purple-800/40 font-mono text-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-purple-900/60 border border-purple-700/60 text-purple-200 font-bold flex items-center gap-1.5 text-[10px]">
+                <ShieldAlert className="w-3.5 h-3.5 text-purple-300" />
+                ORGANIZER PRIVILEGE MODE
+              </span>
+              <span className="text-zinc-400 text-[11px]">Direct on-page challenge controls</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Edit className="w-3.5 h-3.5" />}
+                onClick={handleOpenEdit}
+                className="border-purple-800/60 text-purple-200 hover:bg-purple-900/40"
+              >
+                Edit Challenge
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                onClick={handleDeleteChallenge}
+                className="border-rose-800/60 text-rose-300 hover:bg-rose-950/40"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-purple-900/30 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-500">SECRET FLAG:</span>
+              <div className="flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded border border-purple-900/40 font-mono">
+                <Key className="w-3 h-3 text-amber-400" />
+                <span className="text-amber-200 font-semibold select-all">
+                  {showSecretFlag ? challengeService.getFlag(challenge.id) : '••••••••••••••••••••••••'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowSecretFlag(!showSecretFlag)}
+                  className="text-zinc-400 hover:text-white ml-1"
+                  title={showSecretFlag ? 'Hide Flag' : 'Reveal Flag'}
+                >
+                  {showSecretFlag ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(challengeService.getFlag(challenge.id), 'Flag')}
+                  className="text-zinc-400 hover:text-white ml-1"
+                  title="Copy Flag"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleSolvedForAdmin}
+              className="text-zinc-400 hover:text-zinc-200 underline underline-offset-4 text-[10px]"
+            >
+              Toggle Test Solve State ({challenge.isSolved ? 'Currently Solved' : 'Currently Unsolved'})
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Challenge Header Card (Section 12) */}
       <Card className="p-6 bg-[#10121a] border-zinc-800">
@@ -335,60 +551,110 @@ export const ChallengeDetailPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Files Attachments Section (Section 12) */}
+      {/* Files Attachments & Google Drive Links Section */}
       {challenge.files && challenge.files.length > 0 && (
         <Card className="p-6 bg-[#10121a] border-zinc-800 space-y-3">
-          <h2 className="text-xs font-mono font-semibold text-zinc-400 uppercase tracking-wider">
-            CHALLENGE ATTACHMENTS ({challenge.files.length})
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-mono font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-purple-400" />
+              CHALLENGE ATTACHMENTS & LINKS ({challenge.files.length})
+            </h2>
+          </div>
           <div className="space-y-2">
-            {challenge.files.map((file, idx) => (
-              <div 
-                key={idx}
-                className="p-3 rounded bg-[#0b0d14] border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono"
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <FileCode className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span className="font-semibold text-zinc-200 truncate">{file.name}</span>
-                    <span className="text-zinc-500">({file.size})</span>
-                  </div>
-                  <div className="text-[10px] text-zinc-500 truncate">
-                    SHA256: <span className="text-zinc-400">{file.sha256}</span>
-                  </div>
-                </div>
+            {challenge.files.map((file, idx) => {
+              const isDriveOrLink = file.isLink || file.type === 'gdrive' || file.type === 'link' || 
+                (file.downloadUrl && (file.downloadUrl.includes('drive.google.com') || file.downloadUrl.startsWith('http://') || file.downloadUrl.startsWith('https://')))
+              const fileUrl = file.downloadUrl || file.url || '#'
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => handleCopy(file.sha256, 'SHA-256 Hash')}
-                    className="p-1.5 rounded text-zinc-400 hover:text-zinc-200 bg-zinc-900 border border-zinc-800 transition-colors"
-                    title="Copy SHA-256"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    leftIcon={<Download className="w-3.5 h-3.5" />}
-                    onClick={() => {
-                      toast({
-                        type: 'info',
-                        title: 'Download Initiated',
-                        description: `Downloading verified artifact: ${file.name}`
-                      })
-                    }}
-                  >
-                    Download
-                  </Button>
+              return (
+                <div 
+                  key={idx}
+                  className="p-3.5 rounded bg-[#0b0d14] border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isDriveOrLink ? (
+                        <Globe className="w-4 h-4 text-purple-400 shrink-0" />
+                      ) : (
+                        <FileCode className="w-4 h-4 text-blue-400 shrink-0" />
+                      )}
+                      <span className="font-semibold text-zinc-200 truncate">{file.name}</span>
+                      {file.size && (
+                        <span className="text-zinc-500 text-[11px]">({file.size})</span>
+                      )}
+                      {isDriveOrLink && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-950/80 border border-purple-800/60 text-purple-300 font-bold uppercase tracking-wider">
+                          {file.downloadUrl?.includes('drive.google.com') || file.type === 'gdrive' ? 'Google Drive' : 'External Link'}
+                        </span>
+                      )}
+                    </div>
+                    {file.sha256 ? (
+                      <div className="text-[10px] text-zinc-500 truncate flex items-center gap-1.5">
+                        <span>SHA256:</span>
+                        <span className="text-zinc-400 font-mono select-all">{file.sha256}</span>
+                      </div>
+                    ) : isDriveOrLink && fileUrl !== '#' ? (
+                      <div className="text-[10px] text-zinc-500 truncate font-mono">
+                        {fileUrl}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {file.sha256 && (
+                      <button
+                        onClick={() => handleCopy(file.sha256!, 'SHA-256 Hash')}
+                        className="p-1.5 rounded text-zinc-400 hover:text-zinc-200 bg-zinc-900 border border-zinc-800 transition-colors"
+                        title="Copy SHA-256"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {isDriveOrLink ? (
+                      <a
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        {file.downloadUrl?.includes('drive.google.com') || file.type === 'gdrive' ? 'Open Drive' : 'Open Link'}
+                      </a>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        leftIcon={<Download className="w-3.5 h-3.5 text-blue-400" />}
+                        onClick={() => {
+                          if (fileUrl && fileUrl !== '#') {
+                            const link = document.createElement('a')
+                            link.href = fileUrl
+                            link.download = file.name
+                            link.target = '_blank'
+                            document.body.appendChild(link)
+                            link.click()
+                            document.body.removeChild(link)
+                          }
+                          toast({
+                            type: 'info',
+                            title: 'Download Initiated',
+                            description: `Downloading verified artifact: ${file.name}`
+                          })
+                        }}
+                      >
+                        Download
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </Card>
       )}
 
-      {/* Target Container Instance (Section 12) */}
-      {challenge.target && (
+      {/* Target Container Instance (Only if target host is configured) */}
+      {challenge.target && challenge.target.host && challenge.target.host.trim() !== '' && (
         <Card className="p-6 bg-[#10121a] border-zinc-800 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -605,6 +871,362 @@ export const ChallengeDetailPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Organizer Edit Challenge Modal */}
+      {isOrganizer && challenge && (
+        <Modal
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          title={`EDIT CHALLENGE: ${challenge.title}`}
+          size="lg"
+        >
+          <form onSubmit={handleSaveEdit} className="space-y-4 text-xs font-sans text-zinc-300">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input
+                label="Challenge Title"
+                placeholder="e.g. Memory Stack Pivot 2026"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                required
+              />
+
+              <Input
+                label="Author / Contributor"
+                placeholder="e.g. ACM CTF Team"
+                value={editAuthor}
+                onChange={(e) => setEditAuthor(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+              <div>
+                <label className="block text-[11px] text-zinc-400 mb-1">Category</label>
+                <select
+                  value={editCategory}
+                  onChange={(e: any) => setEditCategory(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-zinc-200 text-xs focus:outline-none focus:border-purple-500"
+                >
+                  {['Web', 'Crypto', 'Forensics', 'OSINT', 'Reverse Engineering', 'Pwn', 'Miscellaneous'].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-zinc-400 mb-1">Difficulty</label>
+                <select
+                  value={editDifficulty}
+                  onChange={(e: any) => setEditDifficulty(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-zinc-200 text-xs focus:outline-none focus:border-purple-500"
+                >
+                  {['Easy', 'Medium', 'Hard', 'Insane'].map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-zinc-400 mb-1">Points</label>
+                <input
+                  type="number"
+                  min="25"
+                  max="1000"
+                  step="25"
+                  value={editPoints}
+                  onChange={(e) => setEditPoints(Math.max(25, parseInt(e.target.value) || 25))}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-zinc-200 text-xs focus:outline-none focus:border-purple-500 font-mono"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-zinc-400 mb-1">Curated Source</label>
+                <select
+                  value={editSource}
+                  onChange={(e: any) => setEditSource(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-zinc-200 text-xs focus:outline-none focus:border-purple-500"
+                >
+                  <option value="ACM">ACM</option>
+                  <option value="NEAR.AI">NEAR.AI</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Target Secret Flag */}
+            <div>
+              <label className="block text-[11px] font-mono text-zinc-400 mb-1 flex items-center gap-1.5">
+                <Key className="w-3.5 h-3.5 text-amber-400" />
+                Target Flag Secret (Validated when users submit)
+              </label>
+              <Input
+                placeholder="e.g. ACM{secret_flag_string}"
+                value={editFlag}
+                onChange={(e) => setEditFlag(e.target.value)}
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-[11px] font-mono text-zinc-400 mb-1">
+                Challenge Description & Brief
+              </label>
+              <textarea
+                rows={5}
+                className="w-full bg-[#11131a] border border-zinc-800 rounded px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-purple-500 font-mono"
+                placeholder="Describe challenge context, endpoints, and clues..."
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                required
+              />
+            </div>
+
+            {/* Target Instance Sandbox Settings */}
+            <div className="p-3.5 rounded bg-zinc-950/70 border border-zinc-800 space-y-3 font-mono">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-200">
+                    <Server className="w-3.5 h-3.5 text-blue-400" />
+                    TARGET INSTANCE SANDBOX
+                  </span>
+                  <p className="text-[11px] text-zinc-400 font-sans mt-0.5">
+                    For dynamic challenges (Web, Pwn) that need an isolated container instance.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editHasTarget}
+                    onChange={(e) => setEditHasTarget(e.target.checked)}
+                    className="rounded bg-zinc-900 border-zinc-700 text-purple-600 focus:ring-0 w-4 h-4"
+                  />
+                  <span className="text-xs font-semibold text-zinc-300">
+                    {editHasTarget ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+
+              {editHasTarget && (
+                <div className="space-y-3 pt-2 border-t border-zinc-800/80">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-zinc-400 mb-1">PROTOCOL</label>
+                      <select
+                        value={editTargetProtocol}
+                        onChange={(e: any) => setEditTargetProtocol(e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 font-mono"
+                      >
+                        <option value="http">http</option>
+                        <option value="tcp">tcp</option>
+                        <option value="ssh">ssh</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-zinc-400 mb-1">HOST / DOMAIN</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. ctf-box.acm.org"
+                        value={editTargetHost}
+                        onChange={(e) => setEditTargetHost(e.target.value)}
+                        required={editHasTarget}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-zinc-400 mb-1">PORT</label>
+                      <input
+                        type="number"
+                        placeholder="8080"
+                        value={editTargetPort}
+                        onChange={(e) => setEditTargetPort(parseInt(e.target.value) || 8080)}
+                        required={editHasTarget}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-2 rounded bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 font-mono">
+                    Endpoint preview:{' '}
+                    <span className="text-emerald-400 font-semibold">
+                      {editTargetProtocol}://{editTargetHost || 'host'}:{editTargetPort}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Challenge Attachments & Google Drive Links */}
+            <div className="p-3.5 rounded bg-zinc-950/70 border border-zinc-800 space-y-3 font-mono">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-200">
+                    <Paperclip className="w-3.5 h-3.5 text-purple-400" />
+                    CHALLENGE ATTACHMENTS & GOOGLE DRIVE LINKS ({editFiles.length})
+                  </span>
+                  <p className="text-[11px] text-zinc-400 font-sans mt-0.5">
+                    Attach files or paste Google Drive / external links. Add as many items as needed.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditFiles(prev => [
+                        ...prev,
+                        {
+                          name: 'Google Drive Resource',
+                          downloadUrl: '',
+                          url: '',
+                          size: 'Google Drive Link',
+                          isLink: true,
+                          type: 'gdrive'
+                        }
+                      ])
+                    }}
+                    className="text-[11px] border-purple-800/60 text-purple-200 hover:bg-purple-950/40"
+                    leftIcon={<Globe className="w-3.5 h-3.5" />}
+                  >
+                    + Add Google Drive Link
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditFiles(prev => [
+                        ...prev,
+                        {
+                          name: 'handout.zip',
+                          downloadUrl: '#download',
+                          size: '1.5 MB',
+                          isLink: false,
+                          type: 'file'
+                        }
+                      ])
+                    }}
+                    className="text-[11px] border-blue-800/60 text-blue-200 hover:bg-blue-950/40"
+                    leftIcon={<Plus className="w-3.5 h-3.5" />}
+                  >
+                    + Add File / Upload
+                  </Button>
+                </div>
+              </div>
+
+              {editFiles.length === 0 ? (
+                <div className="p-4 rounded border border-dashed border-zinc-800 text-center text-zinc-500 text-[11px] font-sans">
+                  No files or Google Drive links attached. Use the buttons above to add attachments.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {editFiles.map((file, idx) => (
+                    <div key={idx} className="p-2.5 rounded bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${
+                            file.isLink || file.type === 'gdrive'
+                              ? 'bg-purple-950 border border-purple-800 text-purple-300'
+                              : 'bg-blue-950 border border-blue-800 text-blue-300'
+                          }`}>
+                            {file.isLink || file.type === 'gdrive' ? 'GOOGLE DRIVE / LINK' : 'FILE'}
+                          </span>
+                          <span className="text-[11px] text-zinc-400 font-semibold">Item #{idx + 1}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-zinc-500 hover:text-rose-400 p-1 transition-colors"
+                          title="Remove attachment"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-zinc-400 mb-1">TITLE / DISPLAY NAME</label>
+                          <input
+                            type="text"
+                            placeholder={file.isLink ? "e.g. Challenge Folder (Drive)" : "e.g. source_code.zip"}
+                            value={file.name}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setEditFiles(prev => prev.map((f, i) => i === idx ? { ...f, name: val } : f))
+                            }}
+                            required
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] text-zinc-400 mb-1">
+                            {file.isLink || file.type === 'gdrive' ? 'GOOGLE DRIVE / EXTERNAL LINK URL' : 'DOWNLOAD URL / PATH'}
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              placeholder={file.isLink || file.type === 'gdrive' ? "https://drive.google.com/drive/folders/..." : "https://... or #download"}
+                              value={file.downloadUrl || file.url || ''}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setEditFiles(prev => prev.map((f, i) => i === idx ? { ...f, downloadUrl: val, url: val } : f))
+                              }}
+                              required
+                              className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 font-mono"
+                            />
+                            {!file.isLink && (
+                              <label className="px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono cursor-pointer shrink-0 border border-zinc-700">
+                                Upload
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const localFile = e.target.files?.[0]
+                                    if (localFile) {
+                                      const sizeStr = (localFile.size / 1024).toFixed(1) + ' KB'
+                                      setEditFiles(prev => prev.map((f, i) => i === idx ? {
+                                        ...f,
+                                        name: localFile.name,
+                                        size: sizeStr,
+                                        downloadUrl: URL.createObjectURL(localFile)
+                                      } : f))
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                isLoading={isSavingEdit}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-mono"
+              >
+                Save Challenge
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
     </div>
   )

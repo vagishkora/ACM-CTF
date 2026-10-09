@@ -75,6 +75,33 @@ class TeamService {
     this.saveState()
   }
 
+  async removeMember(memberId: string): Promise<Team> {
+    this.team.members = this.team.members.filter(m => m.id !== memberId)
+    this.saveState()
+    return mockFetch(this.team, 150)
+  }
+
+  async addMember(username: string, displayName: string, isCaptain = false): Promise<Team> {
+    const newMember = {
+      id: `usr-${Date.now()}`,
+      username: username.trim(),
+      displayName: displayName.trim(),
+      isCaptain,
+      solvesCount: 0,
+      pointsContributed: 0,
+      joinedAt: new Date().toISOString()
+    }
+    this.team.members.push(newMember)
+    this.saveState()
+    return mockFetch(this.team, 150)
+  }
+
+  async updateScore(newScore: number): Promise<Team> {
+    this.team.score = Math.max(0, newScore)
+    this.saveState()
+    return mockFetch(this.team, 150)
+  }
+
   async resetTeam(): Promise<void> {
     this.team = structuredClone(MOCK_CURRENT_TEAM)
     this.saveState()

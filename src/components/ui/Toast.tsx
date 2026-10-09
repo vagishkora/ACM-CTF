@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Info, X, AlertTriangle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
-export type ToastType = 'success' | 'error' | 'info'
+export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
 export interface ToastMessage {
   id: string
@@ -64,13 +64,15 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               'pointer-events-auto flex items-start gap-3 p-3.5 rounded-md border shadow-lg shadow-black/60 bg-[#121520] transition-all animate-in fade-in slide-in-from-bottom-2',
               t.type === 'success' && 'border-emerald-500/40 text-emerald-300',
               t.type === 'error' && 'border-rose-500/40 text-rose-300',
-              t.type === 'info' && 'border-blue-500/40 text-blue-300'
+              t.type === 'info' && 'border-blue-500/40 text-blue-300',
+              t.type === 'warning' && 'border-amber-500/40 text-amber-300'
             )}
           >
             <div className="shrink-0 mt-0.5">
               {t.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
               {t.type === 'error' && <AlertCircle className="w-4 h-4 text-rose-400" />}
               {t.type === 'info' && <Info className="w-4 h-4 text-blue-400" />}
+              {t.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400" />}
             </div>
             <div className="flex-1 text-left min-w-0">
               <p className="text-xs font-semibold text-zinc-100">{t.title}</p>

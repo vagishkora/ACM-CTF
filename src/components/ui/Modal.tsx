@@ -2,13 +2,16 @@ import React, { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
+export type ModalMaxWidth = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl'
+
 export interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title?: string
   description?: string
   children: React.ReactNode
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl'
+  maxWidth?: ModalMaxWidth
+  size?: ModalMaxWidth | string
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -17,8 +20,15 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   description,
   children,
-  maxWidth = 'md'
+  maxWidth,
+  size
 }) => {
+  const allowedSizes: ModalMaxWidth[] = ['sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl']
+  const effectiveWidth: ModalMaxWidth = (
+    maxWidth ||
+    (size && (allowedSizes as string[]).includes(size) ? (size as ModalMaxWidth) : undefined) ||
+    'md'
+  )
   const modalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,11 +51,14 @@ export const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null
 
-  const maxWidthClasses = {
+  const maxWidthClasses: Record<ModalMaxWidth, string> = {
     sm: 'max-w-sm',
     md: 'max-w-md',
     lg: 'max-w-lg',
-    xl: 'max-w-2xl'
+    xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl'
   }
 
   return (
@@ -63,7 +76,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-modal="true"
         className={cn(
           'relative w-full bg-[#11131b] border border-zinc-800 rounded-lg shadow-xl shadow-black/80 z-10 overflow-hidden',
-          maxWidthClasses[maxWidth]
+          maxWidthClasses[effectiveWidth]
         )}
       >
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-800">

@@ -79,14 +79,30 @@ export const RegisterPage: React.FC = () => {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-            <span>PARTICIPANT REGISTRATION</span>
+            <span>EXTERNAL ONBOARDING NOTICE</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">
-            Register for the CTF
+            Participant Registration
           </h1>
           <p className="text-xs text-zinc-400">
-            Join the 6-hour cybersecurity competition. Open for student and open teams.
+            Student registration is managed externally. Accounts are provisioned directly by the Admin.
           </p>
+        </div>
+
+        {/* Notice Card for Students */}
+        <div className="p-4 rounded-lg bg-blue-950/40 border border-blue-800/60 text-xs text-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-white">Registered via External Portal?</p>
+            <p className="text-[11px] text-blue-300/90 mt-0.5">
+              Your Team Name, Email, and temporary Password have been pre-provisioned. You do not need to register again.
+            </p>
+          </div>
+          <Link
+            to="/login"
+            className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shrink-0 text-center transition-colors shadow-sm"
+          >
+            Go to Login
+          </Link>
         </div>
 
         <Card className="p-6 bg-[#10121a] border-zinc-800">

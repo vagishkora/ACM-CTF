@@ -77,6 +77,14 @@ class AnnouncementService {
     await mockFetch(true, 100)
   }
 
+  async updateAnnouncement(id: string, updates: Partial<Announcement>): Promise<Announcement> {
+    const idx = this.announcements.findIndex(a => a.id === id)
+    if (idx === -1) throw new ApiError('Announcement not found', 404)
+    this.announcements[idx] = { ...this.announcements[idx], ...updates }
+    this.saveState()
+    return mockFetch(this.announcements[idx], 150)
+  }
+
   async resetAnnouncements(): Promise<void> {
     this.announcements = structuredClone(MOCK_ANNOUNCEMENTS)
     this.saveState()

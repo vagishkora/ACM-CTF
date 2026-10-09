@@ -14,6 +14,16 @@ export interface EventConfig {
   totalChallengesMock: number
   acmContributionPercent: number
   nearAiContributionPercent: number
+  isPaused?: boolean
+  pausedRemainingSeconds?: number
+}
+
+export interface ReleaseWaveConfig {
+  id: string
+  waveNumber: number
+  title: string
+  unlockAt: string // ISO timestamp or date-time string
+  isUnlocked: boolean
 }
 
 export type ChallengeCategory = 
@@ -31,9 +41,12 @@ export type ChallengeSource = 'ACM' | 'NEAR.AI'
 
 export interface FileAttachment {
   name: string
-  size: string
-  sha256: string
-  downloadUrl: string
+  size?: string
+  sha256?: string
+  downloadUrl?: string
+  url?: string
+  isLink?: boolean
+  type?: 'file' | 'link' | 'gdrive'
 }
 
 export interface InstanceTarget {
@@ -71,6 +84,8 @@ export interface Challenge {
   solvedAt?: string
   isLocked?: boolean
   lockReason?: string
+  releaseWave?: number // Wave number: 1 = Initial (Start of CTF), 2 = Hour 1, 3 = Hour 2, etc.
+  unlockAt?: string    // Optional exact ISO timestamp
 }
 
 export type UserRole = 'participant' | 'organizer'
@@ -86,6 +101,26 @@ export interface User {
   isTeamCaptain?: boolean
   score: number
   solvedCount: number
+  createdAt: string
+  usn?: string
+  year?: string
+  branch?: string
+  phone?: string
+  isProfileComplete?: boolean
+}
+
+export interface ProvisionedAccount {
+  id: string
+  teamName: string
+  email: string
+  password: string
+  role: UserRole
+  name?: string
+  usn?: string
+  year?: string
+  branch?: string
+  phone?: string
+  isProfileComplete?: boolean
   createdAt: string
 }
 

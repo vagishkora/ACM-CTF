@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   Clock, 
-  Trophy, 
   Users, 
   Bell, 
   Terminal, 
@@ -17,6 +16,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useEvent } from '../../context/EventContext'
 import { useCTF } from '../../context/CTFContext'
 import { cn } from '../../lib/utils'
+import { AdminTimerModal } from '../admin/AdminTimerModal'
 
 export const Navbar: React.FC = () => {
   const location = useLocation()
@@ -26,12 +26,15 @@ export const Navbar: React.FC = () => {
   const { unreadAnnouncementsCount } = useCTF()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const [adminTimerModalOpen, setAdminTimerModalOpen] = useState(false)
 
   const navLinks = [
     { name: 'Dashboard', path: '/dashboard' },
     { name: 'Challenges', path: '/challenges' },
-    { name: 'Leaderboard', path: '/leaderboard' },
-    { name: 'Team', path: '/team' },
+    ...(user?.role === 'organizer' ? [
+      { name: 'Leaderboard', path: '/leaderboard' },
+      { name: 'Team', path: '/team' }
+    ] : []),
     { 
       name: 'Announcements', 
       path: '/announcements',
@@ -55,19 +58,20 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
         {/* Brand Wordmark (Strictly adheres to Section 33) */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 xl:gap-6 shrink-0 min-w-0">
           <Link 
             to="/" 
-            className="flex items-center gap-2 group focus:outline-none"
+            className="flex items-center gap-2.5 shrink-0 group focus:outline-none"
           >
-            <div className="w-8 h-8 rounded bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:border-blue-500/60 transition-colors">
-              <Terminal className="w-4 h-4" />
-            </div>
-            <div className="flex items-baseline gap-1.5 font-mono">
-              <span className="font-bold tracking-tight text-zinc-100 text-sm sm:text-base">ACM</span>
+            <img 
+              src="/acm-logo.png" 
+              alt="ACM Logo" 
+              className="h-7 sm:h-8 w-auto object-contain brightness-110 transition-transform group-hover:scale-105" 
+            />
+            <div className="flex items-baseline gap-1.5 font-mono shrink-0">
               <span className="text-zinc-500 text-xs font-light">×</span>
               <span className="font-semibold text-cyan-400 text-sm sm:text-base tracking-tight">NEAR.AI</span>
-              <span className="hidden sm:inline-block text-[11px] font-medium text-zinc-400 ml-1.5 uppercase px-1 py-0.2 rounded bg-zinc-800/80 border border-zinc-700/50">
+              <span className="hidden sm:inline-block text-[11px] font-medium text-zinc-400 ml-1.5 uppercase px-1.5 py-0.5 rounded bg-zinc-800/80 border border-zinc-700/50">
                 CTF
               </span>
             </div>
@@ -75,7 +79,7 @@ export const Navbar: React.FC = () => {
 
           {/* Desktop Navigation Links */}
           {isAuthenticated && (
-            <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
+            <nav className="hidden lg:flex items-center gap-1 text-sm font-medium shrink-0">
               {navLinks.map((link) => {
                 const active = isActive(link.path)
                 return (
@@ -83,7 +87,7 @@ export const Navbar: React.FC = () => {
                     key={link.path}
                     to={link.path}
                     className={cn(
-                      'px-3 py-1.5 rounded transition-colors relative flex items-center gap-1.5',
+                      'px-2.5 xl:px-3 py-1.5 rounded transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0',
                       active 
                         ? 'text-white bg-zinc-800/70 border border-zinc-700/60' 
                         : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/30 border border-transparent'
@@ -103,7 +107,7 @@ export const Navbar: React.FC = () => {
                 <Link
                   to="/admin"
                   className={cn(
-                    'px-3 py-1.5 rounded text-xs font-mono font-medium transition-colors border flex items-center gap-1',
+                    'px-2.5 py-1.5 rounded text-xs font-mono font-medium transition-colors border hidden xl:flex items-center gap-1 whitespace-nowrap shrink-0',
                     location.pathname.startsWith('/admin')
                       ? 'bg-purple-950/60 text-purple-200 border-purple-700/60'
                       : 'text-purple-400 hover:bg-purple-950/30 border-purple-800/40'
@@ -118,11 +122,20 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Right Section: Time Remaining, Score, Rank, User */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Dynamic Countdown Timer (Section 7) */}
-          <div 
-            title={`Event Status: ${status}`}
-            className="flex items-center gap-2 px-3 py-1.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-xs text-zinc-300"
+          <button 
+            type="button"
+            title={user?.role === 'organizer' ? 'Organizer: Click to adjust/pause competition timer' : `Event Status: ${status}`}
+            onClick={() => {
+              if (user?.role === 'organizer') {
+                setAdminTimerModalOpen(true)
+              }
+            }}
+            className={cn(
+              'flex items-center gap-2 px-3 py-1.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-xs text-zinc-300 text-left',
+              user?.role === 'organizer' && 'hover:border-purple-600/80 hover:bg-purple-950/30 cursor-pointer transition-all'
+            )}
           >
             <Clock className={cn(
               'w-3.5 h-3.5',
@@ -138,20 +151,15 @@ export const Navbar: React.FC = () => {
                 {timeRemaining.hours}:{timeRemaining.minutes}:{timeRemaining.seconds}
               </span>
             </div>
-          </div>
+          </button>
 
           {isAuthenticated ? (
             <>
-              {/* Score & Rank Badges (Desktop) */}
+              {/* Score Badge (Desktop) */}
               <div className="hidden lg:flex items-center gap-2 font-mono text-xs">
                 <div className="px-2.5 py-1.5 rounded bg-blue-950/30 border border-blue-800/40 text-blue-300 flex items-center gap-1.5">
                   <span className="text-zinc-500 text-[10px] uppercase font-sans">Score:</span>
                   <span className="font-bold">{user?.score ?? 0}</span>
-                </div>
-                <div className="px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center gap-1.5">
-                  <Trophy className="w-3 h-3 text-amber-400" />
-                  <span className="text-zinc-500 text-[10px] uppercase font-sans">Rank:</span>
-                  <span className="font-bold text-zinc-200">#4</span>
                 </div>
               </div>
 
@@ -244,7 +252,7 @@ export const Navbar: React.FC = () => {
           {isAuthenticated && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-zinc-400 hover:text-zinc-200 p-1.5 rounded hover:bg-zinc-800/60 transition-colors"
+              className="lg:hidden text-zinc-400 hover:text-zinc-200 p-1.5 rounded hover:bg-zinc-800/60 transition-colors"
               aria-label="Toggle navigation"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -255,17 +263,11 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && isAuthenticated && (
-        <div className="md:hidden border-t border-zinc-800 bg-[#0c0e15] px-4 pt-3 pb-5 space-y-3">
+        <div className="lg:hidden border-t border-zinc-800 bg-[#0c0e15] px-4 pt-3 pb-5 space-y-3">
           {/* Mobile Stats Bar */}
-          <div className="grid grid-cols-2 gap-2 p-2.5 rounded bg-zinc-900/60 border border-zinc-800 text-xs font-mono">
-            <div>
-              <span className="text-zinc-500 text-[10px] block">TEAM SCORE</span>
-              <span className="text-blue-400 font-bold">{user?.score ?? 0} pts</span>
-            </div>
-            <div>
-              <span className="text-zinc-500 text-[10px] block">CURRENT RANK</span>
-              <span className="text-zinc-200 font-bold">#4 / 32 Teams</span>
-            </div>
+          <div className="p-2.5 rounded bg-zinc-900/60 border border-zinc-800 text-xs font-mono">
+            <span className="text-zinc-500 text-[10px] block">TEAM SCORE</span>
+            <span className="text-blue-400 font-bold">{user?.score ?? 0} pts</span>
           </div>
 
           <nav className="flex flex-col gap-1 text-sm font-medium">
@@ -325,6 +327,14 @@ export const Navbar: React.FC = () => {
             </button>
           </nav>
         </div>
+      )}
+
+      {/* Admin Quick Timer Modal (accessible anywhere by organizers) */}
+      {user?.role === 'organizer' && (
+        <AdminTimerModal
+          isOpen={adminTimerModalOpen}
+          onClose={() => setAdminTimerModalOpen(false)}
+        />
       )}
     </header>
   )
